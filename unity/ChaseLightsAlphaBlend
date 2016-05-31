@@ -1,0 +1,55 @@
+Shader "Custom/ChaseLightsAlphablend" {
+	Properties{
+		_MainTex("Albedo Texture", 2D) = "white" {}
+		_GlowTex("Glow Texture", 2D) = "black" {}
+		_GlowPower("Glow Power", Range(0.0,1.5)) = 0.0
+		_Cutoff("Alpha Cutoff", Range(0.0,1.0)) = 0.5
+		_Visible("Percent Visible", Range(0.0,1.0)) = 0.0
+		_Offset("Offset", Range(0.0,1.0)) = 0.0
+		_Number("Number of sequences", Range(1.0, 4.0)) = 1.0
+	}
+	SubShader{
+		Tags{ "Queue" = "Transparent" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+		CGPROGRAM
+		#pragma surface surf Lambert alpha
+
+		sampler2D _MainTex;
+		sampler2D _GlowTex;
+		half _GlowPower;
+		half _Cutoff;
+		half _Visible;
+		half _Offset;
+		half _Number;
+
+		struct Input {
+			float2 uv_MainTex;
+			float2 uv_GlowTex;
+		};
+
+		void surf(Input IN, inout SurfaceOutput o) {
+			// Read diffuse texture color
+			float4 color = tex2D(_MainTex, IN.uv_MainTex);
+			o.Albedo = color.rgb;
+			// Determine whether to cutoff, that is fully transparent
+			half cut = step(_Cutoff, color.a);
+			o.Alpha = cut;
+
+			// Read glow texture color
+			float4 glow = tex2D(_GlowTex, IN.uv_GlowTex);
+
+			// In order to determine the glow value determine visible values within an interval
+			// visible = (1 - _MinVisible) * _InverseNumber
+			// and the current value
+			// value = (color.a + _Offset) % _InverseNumber
+			// compare the results
+
+			half temp = (color.a + _Offset) * _Number;
+			half value = temp - floor(temp);
+			half visible = (1 - _Visible);
+			visible = step(visible, value);
+			o.Emission = visible * _GlowPower * glow;
+		}
+		ENDCG
+	}
+	FallBack "Diffuse"
+}
